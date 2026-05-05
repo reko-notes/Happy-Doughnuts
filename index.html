@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Happy Doughnuts</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#96bee8}
+#guiToggle{
+  position:fixed;top:16px;right:16px;z-index:20;
+  background:rgba(15,15,30,0.85);
+  color:#eee;border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;padding:6px 12px;
+  cursor:pointer;font-size:18px;
+  backdrop-filter:blur(8px);line-height:1
+}
+#guiToggle:hover{background:rgba(40,40,60,0.9)}
+#gui{
+  position:fixed;top:52px;right:16px;
+  width:280px;
+  background:rgba(15,15,30,0.92);
+  padding:14px 18px;border-radius:10px;color:#eee;font-size:13px;
+  font-family:system-ui,sans-serif;z-index:10;
+  backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,0.06);
+  max-height:calc(100vh - 70px);overflow-y:auto;
+  transition:opacity 0.3s,transform 0.3s
+}
+#gui.hidden{opacity:0;pointer-events:none;transform:translateX(20px)}
+#gui h3{text-align:center;margin-bottom:10px;letter-spacing:1px}
+.ctrl{margin-bottom:4px;padding:8px 0;cursor:default}
+.ctrl.hidden{display:none}
+.ctrl label{display:block;margin-bottom:2px;font-size:11px;opacity:0.7}
+.ctrl .v{float:right;font-family:monospace;font-size:11px;opacity:0.5}
+input[type=range]{width:100%;height:20px;cursor:pointer}
+select{
+  width:100%;padding:4px;background:#111;color:#eee;
+  border:1px solid #333;border-radius:5px
+}
+input[type=color]{
+  width:100%;height:28px;border:1px solid #333;border-radius:5px;
+  background:#111;padding:1px;cursor:pointer
+}
+button{
+  width:100%;padding:6px;background:#333;color:#eee;
+  border:1px solid #444;border-radius:5px;cursor:pointer;
+  font-size:12px;margin-top:3px
+}
+button:hover{background:#444}
+button.on{background:#664488;border-color:#886aaa}
+.sep{
+  font-size:9px;opacity:0.38;letter-spacing:2px;
+  margin:12px 0 6px;padding-top:8px;
+  border-top:1px solid rgba(255,255,255,0.08)
+}
+</style>
+</head>
+<body>
+<div id="guiToggle">🍩</div>
+
+<div id="gui">
+  <h3>Happy Doughnuts</h3>
+
+  <div class="sep">BASIC</div>
+
+  <div class="ctrl">
+    <label>Dance <span class="v" id="danceVal">Byon</span></label>
+    <select id="dance">
+      <option value="byon">Byon (ぽよん)</option>
+      <option value="coin">Coin Spin (くるん)</option>
+      <option value="roll">Roll (ころころ)</option>
+    </select>
+  </div>
+
+  <div class="ctrl">
+    <label>BPM <span class="v" id="bpmVal">100</span></label>
+    <input type="range" id="bpm" min="50" max="160" value="100">
+  </div>
+
+  <div class="ctrl">
+    <label>Donuts <span class="v" id="cntVal">1</span></label>
+    <input type="range" id="cnt" min="1" max="9" step="2" value="1">
+  </div>
+
+  <div class="sep">FORMATION</div>
+
+  <div class="ctrl">
+    <label>Formation <span class="v" id="formationVal">Line</span></label>
+    <select id="formation">
+      <option value="line">Line (横一列)</option>
+      <option value="circle">Circle (円陣)</option>
+    </select>
+  </div>
+
+  <div class="ctrl">
+    <label>Motion <span class="v" id="formationMotionVal">なし</span></label>
+    <select id="formationMotion"></select>
+  </div>
+
+  <div class="ctrl" id="spacingCtrl">
+    <label>Spacing <span class="v" id="spcVal">2.5</span></label>
+    <input type="range" id="spc" min="8" max="40" value="25">
+  </div>
+
+  <div class="ctrl" id="radiusCtrl">
+    <label>Circle Radius <span class="v" id="radVal">280</span></label>
+    <input type="range" id="radius" min="80" max="500" step="10" value="280">
+  </div>
+
+  <div class="sep">LOOK</div>
+
+  <div class="ctrl">
+    <label>Dough</label>
+    <input type="color" id="colDough" value="#d4a056">
+  </div>
+
+  <div class="ctrl">
+    <label>Chocolate</label>
+    <input type="color" id="colChoco" value="#ecbbd8">
+  </div>
+
+  <div class="ctrl">
+    <label>Background</label>
+    <input type="color" id="colBg" value="#96bee8">
+  </div>
+
+  <div class="ctrl">
+    <label>Sprinkles</label>
+    <select id="sprinkles">
+      <option value="off">OFF</option>
+      <option value="on" selected>ON</option>
+    </select>
+  </div>
+
+  <div class="sep">AUTO</div>
+
+  <button id="btnManual" class="on">Manual</button>
+  <button id="btnAuto">Auto</button>
+
+  <div class="ctrl" style="margin-top:8px">
+    <label>Auto Interval <span class="v" id="intVal">6</span>s</label>
+    <input type="range" id="autoInt" min="3" max="20" value="6">
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+const guiEl = document.getElementById('gui');
+const toggleEl = document.getElementById('guiToggle');
+let guiVisible = true;
+
+toggleEl.onclick = () => {
+  guiVisible = !guiVisible;
+  guiEl.classList.toggle('hidden', !guiVisible);
+};
+
+document.querySelectorAll('#gui .ctrl').forEach(ctrl => {
+  const slider = ctrl.querySelector('input[type=range]');
+  if (!slider) return;
+
+  ctrl.addEventListener('wheel', e => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const step = parseFloat(slider.step) || 1;
+    const delta = e.deltaY < 0 ? step : -step;
+
+    slider.value = Math.min(+slider.max, Math.max(+slider.min, +slider.value + delta));
+    slider.dispatchEvent(new Event('input'));
+  }, { passive: false });
+});
+
+// ── Constants ──
+const REF = 150;
+const THICKNESS = 0.74;
+const WAVE = { yRatio: 24/150, ampRatio: 15/150, freq: 7 };
+
+const FACE = {
+  eyeY: -99.52/REF,
+  eyeSpacing: 32.56/REF,
+  eyeScale: 1.65,
+  lashY: -115.1/REF,
+  lashSpacing: 41.2/REF,
+  lashScale: 0.95,
+  lashRot: 33,
+  lashWeight: 1.4,
+  cheekY: -75/REF,
+  cheekSpacing: 91/REF,
+  cheekScale: 3.0,
+  cheekRot: 21,
+  cheekCol: '#f50000',
+  mouthY: -65/REF,
+  mouthScale: 3.0
+};
+
+const SPRINKLES = [
+  {x:-63,y:-41,rot:-19,col:'#30d0f8'},{x:-116,y:-14,rot:42,col:'#36f29a'},
+  {x:63,y:-41,rot:14,col:'#ff3d64'},{x:116,y:-14,rot:-47,col:'#97c0f7'},
+  {x:91,y:34,rot:-70,col:'#50c8ff'},{x:42,y:78,rot:-46,col:'#50c8ff'},
+  {x:-25,y:108,rot:-129,col:'#50c8ff'},{x:-91,y:61,rot:-67,col:'#7ca27c'},
+  {x:-63,y:0,rot:0,col:'#fff352'},{x:63,y:0,rot:0,col:'#7ff024'},
+  {x:-25,y:61,rot:49,col:'#cc00f5'},{x:-63,y:95,rot:-170,col:'#ff528e'},
+  {x:91,y:78,rot:16,col:'#f3ff52'},{x:25,y:124,rot:0,col:'#52ffa5'}
+].map(s => ({ x:s.x/REF, y:s.y/REF, rot:s.rot, col:s.col }));
+
+const ACTION_PARAMS = {
+  byon: {
+    jumpHeight: 0.4,
+    airSlimX: 0.06,
+    airStretchY: 0.08,
+    landSquashX: 0.12,
+    landSquashY: 0.10
+  },
+  coin: {
+    tame: 0.55,
+    spin: 0.30,
+    breatheCount: 0,
+    breatheAmp: 0,
+    spinFloat: 80,
+    spinMochi: 0,
+    spinStretchY: 0.14,
+    landBounceX: 0.08,
+    landBounceY: 0.12
+  },
+  roll: {
+    rollSpeed: 0.5,
+    rollRange: 1.6,
+    rollBounce: 0.04,
+    rollSquash: 0.005
+  }
+};
+
+const FORMATION_MOTIONS = {
+  line: [
+    { value:'none', label:'なし' },
+    { value:'wave', label:'ウェーブ' },
+    { value:'accordion', label:'アコーディオン' },
+    { value:'seesaw', label:'シーソー' }
+  ],
+  circle: [
+    { value:'none', label:'なし' },
+    { value:'breathe', label:'脈動' },
+    { value:'petal', label:'花びら' },
+    { value:'wave', label:'ウェーブ' },
+    { value:'star', label:'きらめき' },
+    { value:'jitter', label:'ゆらゆら' }
+  ]
+};
+
+// ── State ──
+const S = {
+  dance: 'byon',
+  bpm: 100,
+  colDough: '#d4a056',
+  colChoco: '#ecbbd8',
+  colBg: '#96bee8',
+  sprinkles: true,
+
+  count: 1,
+  spacing: 2.5,
+  formation: 'line',
+  formationMotion: 'none',
+  circleRadius: 280,
+
+  auto: false,
+  autoTimer: 0,
+  autoInterval: 6,
+  zoom: 1.0,
+
+  pendingDanceSwitch: true,
+  pendingFormationSwitch: true
+};
+
+const facePool = [
+  {eyeScale:1.0,mouthType:'smile'},
+  {eyeScale:1.1,mouthType:'grin'},
+  {eyeScale:0.9,mouthType:'oh'},
+  {eyeScale:1.2,mouthType:'open'},
+  {eyeScale:1.0,mouthType:'omega'},
+  {eyeScale:1.05,mouthType:'tehee'},
+  {eyeScale:0.95,mouthType:'pout'},
+  {eyeScale:1.15,mouthType:'laugh'}
+];
+
+let smoothBPM = 100;
+let donutStates = [];
+
+// ── Random helpers ──
+function rand(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function randomByonGap() {
+  return rand(0.25, 1.35);
+}
+
+function randomCoinGap() {
+  return rand(0.35, 2.10);
+}
+
+function randomByonPower() {
+  return rand(0.94, 1.08);
+}
+
+function randomCoinPower() {
+  return rand(0.93, 1.10);
+}
+
+function ensureDonutStates(n, beat = 0) {
+  while (donutStates.length < n) {
+    donutStates.push({
+      exprIdx: Math.floor(Math.random() * facePool.length),
+      exprTimer: Math.random() * 4,
+      exprInterval: 2.8 + Math.random() * 3.5,
+
+      eventType: null,
+      eventStartBeat: 0,
+      eventPower: 1,
+
+      byonNextBeat: beat + rand(0.10, 1.00),
+      coinNextBeat: beat + rand(0.20, 1.80),
+
+      targetOrderDelay: 0,
+      orderDelay: 0,
+      orderVersion: 0,
+
+      rollMovePhase: Math.random() * 0.30,
+      rollRotPhase: Math.random() * 0.32,
+      rollAmpMul: 0.86 + Math.random() * 0.28,
+      rollSpeedMul: 0.88 + Math.random() * 0.24,
+
+      jitterPhase: Math.random() * Math.PI * 2,
+      jitterAmp: 0.5 + Math.random() * 0.5,
+      jitterSpeed: 0.8 + Math.random() * 0.4,
+
+      posReady: false,
+      fx: 0,
+      fy: 0
+    });
+  }
+
+  if (donutStates.length > n) {
+    donutStates.length = n;
+  }
+}
+
+function applySoftDanceSwitch(dance, beat) {
+  for (const ds of donutStates) {
+    ds.targetOrderDelay = 0;
+    ds.orderDelay = 0;
+    ds.orderVersion = 0;
+
+    if (dance === 'byon') {
+      ds.byonNextBeat = beat + rand(0.05, 1.00);
+    } else if (dance === 'coin') {
+      ds.coinNextBeat = beat + rand(0.12, 1.55);
+    }
+  }
+
+  if (dance === 'roll') {
+    resetRollOrder();
+  }
+}
+
+function applyFormationSwitch() {
+  // 位置は updateSmoothPosition() で補間する。
+}
+
+// ── Phase helpers ──
+function getDancePhase(dance, beat) {
+  if (dance === 'byon') {
+    return ((beat % 1) + 1) % 1;
+  }
+
+  return (((beat * 0.5) % 1) + 1) % 1;
+}
+
+function getActionCycle(dance, beat) {
+  if (dance === 'byon') {
+    return Math.floor(beat);
+  }
+
+  return Math.floor(beat * 0.5);
+}
+
+function isSafePhase(dance, beat) {
+  const p = getDancePhase(dance, beat);
+
+  if (dance === 'byon') {
+    return p < 0.08 || p > 0.92;
+  }
+
+  if (dance === 'coin') {
+    return p < 0.45 || p > 0.96;
+  }
+
+  if (dance === 'roll') {
+    return p < 0.055 || p > 0.955;
+  }
+
+  return p < 0.1 || p > 0.9;
+}
+
+// ── Individual Event Actions ──
+function getEventDuration(type) {
+  if (type === 'coin') return 2.0;
+  if (type === 'byon') return 1.0;
+  return 0;
+}
+
+function scheduleNextEvent(ds, type, beat) {
+  if (type === 'coin') {
+    ds.coinNextBeat = beat + randomCoinGap();
+  } else if (type === 'byon') {
+    ds.byonNextBeat = beat + randomByonGap();
+  }
+}
+
+function startEvent(ds, type, beat) {
+  ds.eventType = type;
+  ds.eventStartBeat = beat;
+  ds.eventPower = type === 'coin' ? randomCoinPower() : randomByonPower();
+}
+
+function updateIndividualEvent(ds, beat, desiredDance) {
+  if (ds.eventType) {
+    const duration = getEventDuration(ds.eventType);
+    const localBeat = beat - ds.eventStartBeat;
+
+    if (localBeat >= duration) {
+      const finishedType = ds.eventType;
+      ds.eventType = null;
+      scheduleNextEvent(ds, finishedType, beat);
+    }
+  }
+
+  if (ds.eventType) return;
+
+  if (desiredDance === 'byon' && beat >= ds.byonNextBeat) {
+    startEvent(ds, 'byon', beat);
+  } else if (desiredDance === 'coin' && beat >= ds.coinNextBeat) {
+    startEvent(ds, 'coin', beat);
+  }
+}
+
+// ── Roll Order Shuffle ──
+let rollOrderState = {
+  dance: null,
+  count: 0,
+  cycle: -1,
+  order: [],
+  version: 0
+};
+
+function resetRollOrder() {
+  rollOrderState.dance = null;
+  rollOrderState.count = 0;
+  rollOrderState.cycle = -1;
+  rollOrderState.order = [];
+  rollOrderState.version = 0;
+}
+
+function shuffledIndices(n) {
+  const arr = Array.from({ length: n }, (_, i) => i);
+
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+
+  return arr;
+}
+
+function sameArray(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+
+  return true;
+}
+
+function updateRollOrder(count, beat) {
+  const dance = 'roll';
+
+  if (count <= 1) {
+    rollOrderState.dance = dance;
+    rollOrderState.count = count;
+    rollOrderState.cycle = -1;
+    rollOrderState.order = [0];
+    rollOrderState.version++;
+    return rollOrderState.order;
+  }
+
+  const cycle = getActionCycle(dance, beat);
+  const safeNow = isSafePhase(dance, beat);
+
+  const structureChanged =
+    rollOrderState.dance !== dance ||
+    rollOrderState.count !== count ||
+    rollOrderState.order.length !== count;
+
+  if (structureChanged) {
+    rollOrderState.dance = dance;
+    rollOrderState.count = count;
+    rollOrderState.cycle = cycle;
+    rollOrderState.order = shuffledIndices(count);
+    rollOrderState.version++;
+    return rollOrderState.order;
+  }
+
+  if (cycle !== rollOrderState.cycle && safeNow) {
+    const prev = rollOrderState.order.slice();
+    let next = shuffledIndices(count);
+
+    for (let tries = 0; tries < 8 && sameArray(next, prev); tries++) {
+      next = shuffledIndices(count);
+    }
+
+    rollOrderState.cycle = cycle;
+    rollOrderState.order = next;
+    rollOrderState.version++;
+  }
+
+  return rollOrderState.order;
+}
+
+function getOrderRank(idx, order) {
+  const rank = order.indexOf(idx);
+  return rank < 0 ? 0 : rank;
+}
+
+function getRollDelayStep(count) {
+  if (count <= 1) return 0;
+  return 0.24 / Math.max(1, count - 1);
+}
+
+function getRollDelayEaseRate() {
+  return 1.25;
+}
+
+// ── Formation ──
+function getFormationTarget(i, count, cx, cy, baseSize, beat) {
+  if (count <= 1) {
+    return { x: cx, y: cy };
+  }
+
+  const fTime = beat * 0.5;
+
+  if (S.formation === 'circle') {
+    const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+    let r = S.circleRadius;
+
+    if (S.formationMotion === 'breathe') {
+      r += Math.sin(fTime * Math.PI * 2) * 20;
+    } else if (S.formationMotion === 'petal') {
+      const dir = i % 2 === 0 ? 1 : -1;
+      r += dir * Math.sin(fTime * Math.PI * 2) * 25;
+    } else if (S.formationMotion === 'wave') {
+      r += Math.sin(fTime * Math.PI * 2 + i * (Math.PI * 2 / count)) * 25;
+    } else if (S.formationMotion === 'star') {
+      const spike = Math.sin(fTime * Math.PI * 2 + i * (Math.PI * 2 / count));
+      r += Math.pow(Math.abs(spike), 0.5) * Math.sign(spike) * 35;
+    } else if (S.formationMotion === 'jitter') {
+      const ds = donutStates[i % donutStates.length];
+      r += Math.sin(fTime * Math.PI * 2 * ds.jitterSpeed + ds.jitterPhase) * 20 * ds.jitterAmp;
+    }
+
+    return {
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r
+    };
+  }
+
+  const spacing = S.spacing * baseSize;
+  const baseX = cx + (i - (count - 1) / 2) * spacing;
+  let x = baseX;
+  let y = cy;
+
+  if (S.formationMotion === 'wave') {
+    y += Math.sin(fTime * Math.PI * 2 + i * 0.8) * baseSize * 0.22;
+  } else if (S.formationMotion === 'accordion') {
+    const stretch = Math.sin(fTime * Math.PI * 2) * 0.4;
+    x = cx + (i - (count - 1) / 2) * spacing * (1 + stretch);
+  } else if (S.formationMotion === 'seesaw') {
+    const denom = ((count - 1) / 2) || 1;
+    const tilt = (i - (count - 1) / 2) / denom;
+    y += Math.sin(fTime * Math.PI * 2) * tilt * baseSize * 0.30;
+  }
+
+  return { x, y };
+}
+
+function updateSmoothPosition(ds, target, dt) {
+  if (!ds.posReady) {
+    ds.fx = target.x;
+    ds.fy = target.y;
+    ds.posReady = true;
+    return { x: ds.fx, y: ds.fy };
+  }
+
+  const k = Math.min(1, dt * 5.0);
+  ds.fx += (target.x - ds.fx) * k;
+  ds.fy += (target.y - ds.fy) * k;
+
+  return { x: ds.fx, y: ds.fy };
+}
+
+// ── Blink ──
+const blinkStates = [];
+
+for (let i = 0; i < 12; i++) {
+  blinkStates.push({
+    nextBlink: 1.5 + Math.random() * 4,
+    blinking: false,
+    blinkTimer: 0,
+    blinkDuration: 0.1 + Math.random() * 0.08,
+    blinkStyle: 'shut'
+  });
+}
+
+const blinkStyleList = ['shut','shut','happy','happy','squint'];
+
+// ── GUI ──
+const $ = id => document.getElementById(id);
+
+function updateVisibleControls() {
+  $('spacingCtrl').classList.toggle('hidden', S.formation !== 'line');
+  $('radiusCtrl').classList.toggle('hidden', S.formation !== 'circle');
+}
+
+function updateFormationMotionOptions() {
+  const sel = $('formationMotion');
+  const options = FORMATION_MOTIONS[S.formation] || FORMATION_MOTIONS.line;
+
+  sel.innerHTML = '';
+
+  for (const opt of options) {
+    const el = document.createElement('option');
+    el.value = opt.value;
+    el.textContent = opt.label;
+    sel.appendChild(el);
+  }
+
+  if (!options.some(o => o.value === S.formationMotion)) {
+    S.formationMotion = 'none';
+  }
+
+  sel.value = S.formationMotion;
+
+  const current = options.find(o => o.value === S.formationMotion);
+  $('formationMotionVal').textContent = current ? current.label : S.formationMotion;
+
+  updateVisibleControls();
+}
+
+updateFormationMotionOptions();
+
+$('dance').onchange = e => {
+  S.dance = e.target.value;
+  S.pendingDanceSwitch = true;
+  $('danceVal').textContent = e.target.selectedOptions[0].text;
+};
+
+$('bpm').oninput = e => {
+  S.bpm = +e.target.value;
+  $('bpmVal').textContent = e.target.value;
+};
+
+$('colDough').oninput = e => S.colDough = e.target.value;
+$('colChoco').oninput = e => S.colChoco = e.target.value;
+$('colBg').oninput = e => S.colBg = e.target.value;
+
+$('sprinkles').onchange = e => {
+  S.sprinkles = (e.target.value === 'on');
+};
+
+$('cnt').oninput = e => {
+  S.count = +e.target.value;
+  S.pendingDanceSwitch = true;
+  S.pendingFormationSwitch = true;
+  $('cntVal').textContent = e.target.value;
+};
+
+$('formation').onchange = e => {
+  S.formation = e.target.value;
+  S.formationMotion = 'none';
+  S.pendingFormationSwitch = true;
+  $('formationVal').textContent = e.target.selectedOptions[0].text;
+  updateFormationMotionOptions();
+};
+
+$('formationMotion').onchange = e => {
+  S.formationMotion = e.target.value;
+  S.pendingFormationSwitch = true;
+
+  const options = FORMATION_MOTIONS[S.formation] || [];
+  const current = options.find(o => o.value === S.formationMotion);
+  $('formationMotionVal').textContent = current ? current.label : S.formationMotion;
+};
+
+$('spc').oninput = e => {
+  S.spacing = e.target.value / 10;
+  S.pendingFormationSwitch = true;
+  $('spcVal').textContent = S.spacing.toFixed(1);
+};
+
+$('radius').oninput = e => {
+  S.circleRadius = +e.target.value;
+  S.pendingFormationSwitch = true;
+  $('radVal').textContent = e.target.value;
+};
+
+$('autoInt').oninput = e => {
+  S.autoInterval = +e.target.value;
+  $('intVal').textContent = e.target.value;
+};
+
+$('btnManual').onclick = () => {
+  S.auto = false;
+  $('btnManual').classList.add('on');
+  $('btnAuto').classList.remove('on');
+};
+
+$('btnAuto').onclick = () => {
+  S.auto = true;
+  $('btnAuto').classList.add('on');
+  $('btnManual').classList.remove('on');
+};
+
+window.addEventListener('wheel', e => {
+  if (e.target.closest('#gui')) return;
+  S.zoom = Math.max(0.4, Math.min(3.0, S.zoom - e.deltaY * 0.001));
+}, { passive: true });
+
+// ── p5 ──
+new p5(sk => {
+  let t = 0;
+  let beatAccum = 0;
+
+  sk.setup = () => {
+    sk.createCanvas(sk.windowWidth, sk.windowHeight);
+  };
+
+  sk.windowResized = () => {
+    sk.resizeCanvas(sk.windowWidth, sk.windowHeight);
+  };
+
+  sk.draw = () => {
+    const dt = sk.deltaTime / 1000;
+    t += dt;
+
+    smoothBPM += (S.bpm - smoothBPM) * Math.min(1, dt * 3);
+    sk.background(S.colBg);
+
+    beatAccum += dt / (60 / smoothBPM);
+    const beat = beatAccum;
+
+    ensureDonutStates(S.count, beat);
+
+    if (S.pendingDanceSwitch) {
+      applySoftDanceSwitch(S.dance, beat);
+      S.pendingDanceSwitch = false;
+    }
+
+    if (S.pendingFormationSwitch) {
+      applyFormationSwitch();
+      S.pendingFormationSwitch = false;
+    }
+
+    for (const ds of donutStates) {
+      ds.exprTimer += dt;
+
+      if (ds.exprTimer > ds.exprInterval) {
+        ds.exprTimer = 0;
+        ds.exprInterval = 2.8 + Math.random() * 3.5;
+        ds.exprIdx = Math.floor(Math.random() * facePool.length);
+      }
+    }
+
+    if (S.auto) {
+      S.autoTimer += dt;
+
+      if (S.autoTimer > S.autoInterval) {
+        S.autoTimer = 0;
+
+        const dances = ['byon','coin','roll'];
+        S.dance = dances[Math.floor(Math.random() * dances.length)];
+        $('dance').value = S.dance;
+        $('danceVal').textContent = $('dance').selectedOptions[0].text;
+
+        const formations = ['line','circle'];
+        S.formation = formations[Math.floor(Math.random() * formations.length)];
+        $('formation').value = S.formation;
+        $('formationVal').textContent = $('formation').selectedOptions[0].text;
+
+        updateFormationMotionOptions();
+
+        const motions = FORMATION_MOTIONS[S.formation];
+        S.formationMotion = motions[Math.floor(Math.random() * motions.length)].value;
+        $('formationMotion').value = S.formationMotion;
+
+        const currentMotion = motions.find(o => o.value === S.formationMotion);
+        $('formationMotionVal').textContent = currentMotion ? currentMotion.label : S.formationMotion;
+
+        S.bpm = 70 + Math.floor(Math.random() * 60);
+        $('bpm').value = S.bpm;
+        $('bpmVal').textContent = S.bpm;
+
+        S.pendingDanceSwitch = true;
+        S.pendingFormationSwitch = true;
+      }
+    }
+
+    for (let i = 0; i < blinkStates.length; i++) {
+      const bs = blinkStates[i];
+
+      if (bs.blinking) {
+        bs.blinkTimer += dt;
+
+        if (bs.blinkTimer >= bs.blinkDuration) {
+          bs.blinking = false;
+          bs.nextBlink = 1.5 + Math.random() * 4;
+          bs.blinkDuration = 0.08 + Math.random() * 0.1;
+          bs.blinkStyle = blinkStyleList[Math.floor(Math.random() * blinkStyleList.length)];
+        }
+      } else {
+        bs.nextBlink -= dt;
+
+        if (bs.nextBlink <= 0) {
+          bs.blinking = true;
+          bs.blinkTimer = 0;
+        }
+      }
+    }
+
+    const cx = sk.width / 2;
+    const cy = sk.height * 0.5;
+    const baseSize = Math.min(sk.width, sk.height) * 0.09 * S.zoom;
+
+    let rollOrder = [];
+    let rollDelayStep = 0;
+    let rollEaseRate = 0;
+
+    if (S.dance === 'roll') {
+      rollOrder = updateRollOrder(S.count, beat);
+      rollDelayStep = getRollDelayStep(S.count);
+      rollEaseRate = getRollDelayEaseRate();
+    }
+
+    const drawItems = [];
+
+    for (let i = 0; i < S.count; i++) {
+      const ds = donutStates[i % donutStates.length];
+
+      const target = getFormationTarget(i, S.count, cx, cy, baseSize, beat);
+      const pos = updateSmoothPosition(ds, target, dt);
+
+      let actionType = S.dance;
+      let actionBeat = beat;
+      let actionPower = 1;
+
+      if (S.count === 1) {
+        ds.targetOrderDelay = 0;
+        ds.orderDelay = 0;
+        actionType = S.dance;
+        actionBeat = beat;
+      } else if (S.dance === 'byon' || S.dance === 'coin') {
+        updateIndividualEvent(ds, beat, S.dance);
+
+        if (ds.eventType) {
+          actionType = ds.eventType;
+          actionBeat = Math.max(0, beat - ds.eventStartBeat);
+          actionPower = ds.eventPower;
+        } else {
+          actionType = 'idle';
+          actionBeat = 0;
+          actionPower = 1;
+        }
+
+        ds.targetOrderDelay = 0;
+        ds.orderDelay = 0;
+      } else if (S.dance === 'roll') {
+        updateIndividualEvent(ds, beat, 'none');
+
+        if (S.count === 1) {
+          ds.targetOrderDelay = 0;
+          ds.orderDelay = 0;
+          ds.orderVersion = rollOrderState.version;
+        } else {
+          const rank = getOrderRank(i, rollOrder);
+          const desiredDelay = rank * rollDelayStep;
+
+          const personalBeat = Math.max(0, beat - ds.orderDelay);
+          const canAcceptNewOrder =
+            ds.orderVersion !== rollOrderState.version &&
+            isSafePhase('roll', personalBeat);
+
+          if (canAcceptNewOrder) {
+            ds.targetOrderDelay = desiredDelay;
+            ds.orderVersion = rollOrderState.version;
+          }
+
+          ds.orderDelay += (ds.targetOrderDelay - ds.orderDelay) * Math.min(1, dt * rollEaseRate);
+        }
+
+        if (ds.eventType) {
+          actionType = ds.eventType;
+          actionBeat = Math.max(0, beat - ds.eventStartBeat);
+          actionPower = ds.eventPower;
+        } else {
+          actionType = 'roll';
+          actionBeat = Math.max(0, beat - ds.orderDelay);
+          actionPower = 1;
+        }
+      }
+
+      drawItems.push({
+        idx: i,
+        x: pos.x,
+        y: pos.y,
+        actionType,
+        actionBeat,
+        actionPower
+      });
+    }
+
+    // Circleでは下側のドーナツを手前に描く。
+    // Lineではwave/seesaw時にy順で入れ替えるとチカチカするため、idx順で固定する。
+    if (S.formation === 'circle') {
+      drawItems.sort((a, b) => a.y - b.y);
+    } else {
+      drawItems.sort((a, b) => a.idx - b.idx);
+    }
+
+    for (const item of drawItems) {
+      drawDonut(sk, item.x, item.y, baseSize, t, item.actionBeat, item.idx, {
+        type: item.actionType,
+        power: item.actionPower
+      });
+    }
+  };
+
+  // ── Lash functions ──
+
+  function drawTaperedLash(sk, length, rootWidth) {
+    const tipWidth = Math.max(0.5, rootWidth * 0.08);
+    const sideBulge = rootWidth * 0.55;
+
+    sk.beginShape();
+    sk.vertex(-rootWidth / 2, 0);
+    sk.bezierVertex(-rootWidth * 0.30, -length * 0.18, -sideBulge, -length * 0.60, -tipWidth / 2, -length);
+    sk.vertex(tipWidth / 2, -length);
+    sk.bezierVertex(sideBulge, -length * 0.60, rootWidth * 0.30, -length * 0.18, rootWidth / 2, 0);
+    sk.endShape(sk.CLOSE);
+  }
+
+  function drawLashCluster(sk, cx, cy, rotDeg, scale, weight, sc) {
+    const baseLength = 9.5 * scale * scale * sc;
+    const rootW = 2.8 * weight * scale * sc;
+
+    const lashDefs = [
+      {x:-5*scale*sc, y:1.5*scale*sc, rot:-18, lenMul:0.92},
+      {x:0, y:0, rot:0, lenMul:1.04},
+      {x:5*scale*sc, y:1.5*scale*sc, rot:18, lenMul:0.96}
+    ];
+
+    sk.push();
+    sk.translate(cx, cy);
+    sk.rotate(rotDeg * Math.PI / 180);
+    sk.noStroke();
+    sk.fill(50, 30, 15);
+
+    for (const ld of lashDefs) {
+      sk.push();
+      sk.translate(ld.x, ld.y);
+      sk.rotate(ld.rot * Math.PI / 180);
+      drawTaperedLash(sk, baseLength * ld.lenMul, rootW);
+      sk.pop();
+    }
+
+    sk.pop();
+  }
+
+  function getDynamicLashPlacement(eyeX, eyeY, cEw, cEh, nEw, nEh, outerR, sc, isBlinking, blinkStyle) {
+    const nLY = FACE.lashY * outerR;
+    const nLX = FACE.lashSpacing * outerR;
+    const nET = eyeY - nEh / 2;
+    const nLGY = nET - nLY;
+    const nEOX = eyeX + nEw / 2;
+    const nLGX = nLX - nEOX;
+
+    const dLX = eyeX + cEw / 2 + nLGX;
+    let dLY;
+
+    if (isBlinking) {
+      if (blinkStyle === 'happy') dLY = eyeY - 1.0 * sc;
+      else if (blinkStyle === 'squint') dLY = eyeY - 2.0 * sc;
+      else dLY = eyeY - 1.5 * sc;
+    } else {
+      dLY = eyeY - cEh / 2 - nLGY;
+    }
+
+    return { x: dLX, y: dLY };
+  }
+
+  // ── Dance functions ──
+
+  function idleDance(time, idx, size) {
+    const breathe = Math.sin(time * 1.65 + idx * 1.37);
+    const tiny = Math.sin(time * 2.25 + idx * 0.91);
+
+    return {
+      offsetY: breathe * size * 0.010,
+      scX: 1 + tiny * 0.004,
+      scY: 1 - tiny * 0.004,
+      offsetX: 0,
+      rotation: 0
+    };
+  }
+
+  function calcDanceByon(beat, size, power = 1) {
+    const p = ACTION_PARAMS.byon;
+    const phase = beat * Math.PI * 2;
+    const sinP = Math.sin(phase);
+    const jumpHeight = Math.max(0, sinP) * size * p.jumpHeight * power;
+
+    let scX;
+    let scY;
+
+    if (sinP > 0) {
+      scX = 1 - sinP * p.airSlimX * power;
+      scY = 1 + sinP * p.airStretchY * power;
+    } else {
+      const sq = Math.abs(sinP);
+      scX = 1 + sq * p.landSquashX * power;
+      scY = 1 - sq * p.landSquashY * power;
+    }
+
+    return {
+      offsetY: -jumpHeight,
+      scX,
+      scY,
+      offsetX: 0,
+      rotation: 0
+    };
+  }
+
+  function calcDanceCoin(beat, power = 1) {
+    const p = ACTION_PARAMS.coin;
+    const cycle = (beat * 0.5) % 1;
+
+    const tame = Math.max(0.01, p.tame);
+    const spin = Math.max(0.01, p.spin);
+    const spinStart = tame;
+    const landStart = Math.min(tame + spin, 0.99);
+
+    let scX;
+    let scY;
+    let offsetY;
+
+    if (cycle < spinStart) {
+      const breathe =
+        p.breatheCount === 0
+          ? 0
+          : Math.sin((cycle / spinStart) * Math.PI * (p.breatheCount * 2)) * p.breatheAmp;
+
+      scX = 1 + breathe;
+      scY = 1;
+      offsetY = 0;
+    } else if (cycle < landStart) {
+      const spinT = (cycle - spinStart) / spin;
+
+      scX = Math.cos(spinT * Math.PI * 2);
+
+      const flatness = 1 - Math.abs(scX);
+      scY = 1
+        + flatness * p.spinMochi * power
+        + Math.sin(spinT * Math.PI) * p.spinStretchY * power;
+
+      offsetY = -Math.sin(spinT * Math.PI) * p.spinFloat * power;
+    } else {
+      const landDuration = 1 - landStart;
+      const landT = landDuration > 0.001 ? (cycle - landStart) / landDuration : 0;
+
+      scX = 1 + Math.sin(landT * Math.PI) * p.landBounceX * power;
+      scY = 1 - Math.sin(landT * Math.PI) * p.landBounceY * power;
+      offsetY = 0;
+    }
+
+    return {
+      offsetY,
+      scX,
+      scY,
+      offsetX: 0,
+      rotation: 0
+    };
+  }
+
+  function calcDanceRoll(beat, size, rollOpt = {}) {
+    const p = ACTION_PARAMS.roll;
+
+    const movePhase = rollOpt.movePhase ?? 0;
+    const rotPhase = rollOpt.rotPhase ?? 0;
+    const ampMul = rollOpt.ampMul ?? 1;
+    const speedMul = rollOpt.speedMul ?? 1;
+
+    const moveT = beat * p.rollSpeed * speedMul + movePhase;
+    const rotT = beat * p.rollSpeed * speedMul + rotPhase;
+
+    const offsetX = Math.sin(moveT * Math.PI) * size * p.rollRange * ampMul;
+    const rotation = -rotT * Math.PI;
+
+    const bounce = Math.abs(Math.sin(moveT * Math.PI * 2)) * size * p.rollBounce;
+    const squashPhase = Math.abs(Math.sin(moveT * Math.PI * 2));
+
+    const scX = 1 + squashPhase * p.rollSquash;
+    const scY = 1 - squashPhase * p.rollSquash;
+
+    return {
+      offsetY: -bounce,
+      scX,
+      scY,
+      offsetX,
+      rotation
+    };
+  }
+
+  // ── Main draw ──
+
+  function drawDonut(sk, px, py, size, time, beat, idx, actionOpt = {}) {
+    sk.push();
+    sk.translate(px, py);
+
+    const ds = donutStates[idx % donutStates.length] ?? {};
+    const expr = facePool[ds.exprIdx ?? 0];
+    const bs = blinkStates[idx % blinkStates.length];
+
+    const actionType = actionOpt.type ?? S.dance;
+    const power = actionOpt.power ?? 1;
+
+    let dance;
+
+    switch (actionType) {
+      case 'byon':
+        dance = calcDanceByon(beat, size, power);
+        break;
+
+      case 'coin':
+        dance = calcDanceCoin(beat, power);
+        break;
+
+      case 'roll':
+        dance = calcDanceRoll(beat, size, {
+          movePhase: S.count === 1 ? 0 : ds.rollMovePhase,
+          rotPhase: S.count === 1 ? 0 : ds.rollRotPhase,
+          ampMul: S.count === 1 ? 1 : ds.rollAmpMul,
+          speedMul: S.count === 1 ? 1 : ds.rollSpeedMul
+        });
+        break;
+
+      default:
+        dance = idleDance(time, idx, size);
+        break;
+    }
+
+    sk.translate(dance.offsetX, dance.offsetY);
+
+    if (dance.rotation) {
+      sk.rotate(dance.rotation);
+    }
+
+    sk.scale(dance.scX, dance.scY);
+
+    const sc = size / REF * 1.07;
+    const outerR = REF * sc;
+    const innerR = REF * (1 - THICKNESS) * sc;
+
+    const isFront = dance.scX >= 0;
+
+    // Donut body
+    sk.noStroke();
+    sk.fill(S.colDough);
+    sk.beginShape();
+
+    for (let a = 0; a < 360; a += 2) {
+      const r = sk.radians(a);
+      sk.vertex(Math.cos(r) * outerR, Math.sin(r) * outerR);
+    }
+
+    sk.beginContour();
+
+    for (let a = 360; a >= 0; a -= 2) {
+      const r = sk.radians(a);
+      sk.vertex(Math.cos(r) * innerR, Math.sin(r) * innerR);
+    }
+
+    sk.endContour();
+    sk.endShape(sk.CLOSE);
+
+    // Chocolate + Sprinkles
+    if (isFront) {
+      sk.drawingContext.save();
+      sk.drawingContext.beginPath();
+
+      for (let a = 0; a < 360; a += 2) {
+        const r = a * Math.PI / 180;
+        const x = Math.cos(r) * outerR;
+        const y = Math.sin(r) * outerR;
+
+        if (a === 0) {
+          sk.drawingContext.moveTo(x, y);
+        } else {
+          sk.drawingContext.lineTo(x, y);
+        }
+      }
+
+      sk.drawingContext.closePath();
+      sk.drawingContext.moveTo(innerR, 0);
+
+      for (let a = 0; a <= 360; a += 2) {
+        const r = a * Math.PI / 180;
+        sk.drawingContext.lineTo(Math.cos(r) * innerR, Math.sin(r) * innerR);
+      }
+
+      sk.drawingContext.clip('evenodd');
+
+      const wY = WAVE.yRatio * outerR;
+      const wA = WAVE.ampRatio * outerR;
+
+      sk.drawingContext.beginPath();
+      sk.drawingContext.moveTo(-outerR - 5, -outerR - 5);
+      sk.drawingContext.lineTo(outerR + 5, -outerR - 5);
+      sk.drawingContext.lineTo(outerR + 5, wY);
+
+      for (let wx = outerR + 5; wx >= -outerR - 5; wx -= 2) {
+        const t2 = (wx + outerR + 5) / (2 * outerR + 10);
+        sk.drawingContext.lineTo(wx, wY + Math.sin(t2 * WAVE.freq * Math.PI) * wA);
+      }
+
+      sk.drawingContext.lineTo(-outerR - 5, -outerR - 5);
+      sk.drawingContext.closePath();
+      sk.drawingContext.fillStyle = sk.color(S.colChoco).toString();
+      sk.drawingContext.fill();
+      sk.drawingContext.restore();
+
+      if (S.sprinkles) {
+        for (const sp of SPRINKLES) {
+          sk.push();
+          sk.translate(sp.x * outerR, sp.y * outerR);
+          sk.rotate(sp.rot * Math.PI / 180);
+          sk.fill(sp.col);
+          sk.noStroke();
+          sk.rect(-1.5 * sc, -4.5 * sc, 3 * sc, 9 * sc, 1.5 * sc);
+          sk.pop();
+        }
+      }
+    }
+
+    // Outline
+    sk.noFill();
+    sk.stroke(80, 50, 20, 50);
+    sk.strokeWeight(1.5);
+    sk.ellipse(0, 0, outerR * 2, outerR * 2);
+    sk.ellipse(0, 0, innerR * 2, innerR * 2);
+    sk.noStroke();
+
+    // Face
+    if (isFront) {
+      const F = FACE;
+      const es = expr.eyeScale;
+      const eyeBase = outerR * 0.037 * F.eyeScale;
+      const eyeX = F.eyeSpacing * outerR;
+      const eyeY = F.eyeY * outerR;
+      const lookX = Math.sin(time * 1.3 + idx) * 2.5 * sc;
+      const lookY = Math.cos(time * 0.9 + idx) * 1.5 * sc;
+      const isBlinking = bs.blinking;
+      const bStyle = bs.blinkStyle;
+      const currentEw = eyeBase * 3 * es;
+      const currentEh = eyeBase * 3.4 * es;
+      const neutralEw = eyeBase * 3;
+      const neutralEh = eyeBase * 3.4;
+
+      if (isBlinking) {
+        sk.stroke(60, 35, 20);
+        sk.strokeWeight(2 * sc);
+        sk.noFill();
+
+        const ew = currentEw;
+
+        if (bStyle === 'shut') {
+          sk.line(-eyeX - ew / 2, eyeY, -eyeX + ew / 2, eyeY);
+          sk.line( eyeX - ew / 2, eyeY,  eyeX + ew / 2, eyeY);
+        } else if (bStyle === 'happy') {
+          sk.arc(-eyeX, eyeY + 2 * sc, ew, eyeBase * 2.2, Math.PI + 0.3, -0.3);
+          sk.arc( eyeX, eyeY + 2 * sc, ew, eyeBase * 2.2, Math.PI + 0.3, -0.3);
+        } else if (bStyle === 'squint') {
+          sk.arc(-eyeX, eyeY - 2 * sc, ew, eyeBase * 1.5, 0.2, Math.PI - 0.2);
+          sk.arc( eyeX, eyeY - 2 * sc, ew, eyeBase * 1.5, 0.2, Math.PI - 0.2);
+        }
+
+        sk.noStroke();
+      } else {
+        sk.fill(255);
+        sk.stroke(255);
+        sk.strokeWeight(2.5 * sc);
+
+        sk.ellipse(-eyeX, eyeY, currentEw + 2 * sc, currentEh + 2 * sc);
+        sk.ellipse( eyeX, eyeY, currentEw + 2 * sc, currentEh + 2 * sc);
+
+        sk.noStroke();
+        sk.fill(255);
+
+        sk.ellipse(-eyeX, eyeY, currentEw, currentEh);
+        sk.ellipse( eyeX, eyeY, currentEw, currentEh);
+
+        sk.fill(50, 30, 15);
+
+        const iw = eyeBase * 1.8 * es;
+        const ih = eyeBase * 2.0 * es;
+
+        sk.ellipse(-eyeX + lookX, eyeY + lookY, iw, ih);
+        sk.ellipse( eyeX + lookX, eyeY + lookY, iw, ih);
+
+        sk.fill(255);
+
+        sk.ellipse(-eyeX + lookX - 1.5 * sc, eyeY + lookY - 2 * sc, eyeBase * 0.6, eyeBase * 0.6);
+        sk.ellipse( eyeX + lookX - 1.5 * sc, eyeY + lookY - 2 * sc, eyeBase * 0.6, eyeBase * 0.6);
+      }
+
+      const lashPos = getDynamicLashPlacement(
+        eyeX,
+        eyeY,
+        currentEw,
+        currentEh,
+        neutralEw,
+        neutralEh,
+        outerR,
+        sc,
+        isBlinking,
+        bStyle
+      );
+
+      drawLashCluster(sk, -lashPos.x, lashPos.y, -F.lashRot, F.lashScale, F.lashWeight, sc);
+      drawLashCluster(sk,  lashPos.x, lashPos.y,  F.lashRot, F.lashScale, F.lashWeight, sc);
+
+      const cheekX = F.cheekSpacing * outerR;
+      const cheekY = F.cheekY * outerR;
+      const cheekW = 20 * sc * F.cheekScale;
+      const cheekH = 12 * sc * F.cheekScale;
+      const cheekCol = sk.color(F.cheekCol);
+
+      cheekCol.setAlpha(55);
+
+      sk.fill(cheekCol);
+      sk.noStroke();
+
+      sk.push();
+      sk.translate(-cheekX, cheekY);
+      sk.rotate(-F.cheekRot * Math.PI / 180);
+      sk.ellipse(0, 0, cheekW, cheekH);
+      sk.pop();
+
+      sk.push();
+      sk.translate(cheekX, cheekY);
+      sk.rotate(F.cheekRot * Math.PI / 180);
+      sk.ellipse(0, 0, cheekW, cheekH);
+      sk.pop();
+
+      const mouthY = F.mouthY * outerR;
+      const mBase = outerR * 0.027 * F.mouthScale;
+
+      switch (expr.mouthType) {
+        case 'smile':
+          sk.noFill();
+          sk.stroke(80, 50, 30, 150);
+          sk.strokeWeight(1.8 * sc);
+          sk.arc(0, mouthY, mBase * 2, mBase * 1.2, 0.1, Math.PI - 0.1);
+          break;
+
+        case 'grin':
+          sk.noFill();
+          sk.stroke(80, 50, 30, 150);
+          sk.strokeWeight(1.8 * sc);
+          sk.arc(0, mouthY, mBase * 3, mBase * 2, 0.05, Math.PI - 0.05);
+          break;
+
+        case 'oh':
+          sk.noStroke();
+          sk.fill(80, 50, 30, 120);
+          sk.ellipse(0, mouthY, mBase * 1.2, mBase * 1.6);
+          break;
+
+        case 'open':
+          sk.noStroke();
+          sk.fill(80, 50, 30, 140);
+          sk.ellipse(0, mouthY, mBase * 2, mBase * 2.4);
+          sk.fill(255, 100, 120, 80);
+          sk.ellipse(0, mouthY + mBase * 0.4, mBase * 0.8, mBase * 0.5);
+          break;
+
+        case 'omega': {
+          sk.noFill();
+          sk.stroke(80, 50, 30, 150);
+          sk.strokeWeight(1.8 * sc);
+
+          const ow = mBase * 0.7;
+
+          sk.arc(-ow * 0.5, mouthY, ow, mBase * 0.9, 0.15, Math.PI - 0.15);
+          sk.arc( ow * 0.5, mouthY, ow, mBase * 0.9, 0.15, Math.PI - 0.15);
+          break;
+        }
+
+        case 'tehee':
+          sk.noFill();
+          sk.stroke(80, 50, 30, 150);
+          sk.strokeWeight(1.8 * sc);
+          sk.arc(-mBase * 0.2, mouthY, mBase * 1.4, mBase * 0.9, 0.15, Math.PI - 0.15);
+          break;
+
+        case 'hehe':
+          sk.noStroke();
+          sk.fill(80, 50, 30, 130);
+          sk.arc(0, mouthY, mBase * 2.2, mBase * 1.6, 0, Math.PI, sk.CHORD);
+          break;
+
+        case 'pout':
+          sk.noFill();
+          sk.stroke(80, 50, 30, 150);
+          sk.strokeWeight(1.8 * sc);
+          sk.arc(0, mouthY + mBase * 0.3, mBase * 1.4, mBase * 0.8, Math.PI + 0.2, -0.2);
+          break;
+
+        case 'laugh':
+          sk.noStroke();
+          sk.fill(80, 50, 30, 150);
+          sk.arc(0, mouthY, mBase * 2.8, mBase * 2.2, 0, Math.PI, sk.CHORD);
+          sk.fill(255, 100, 120, 90);
+          sk.ellipse(0, mouthY + mBase * 0.5, mBase * 1.0, mBase * 0.5);
+          break;
+      }
+
+      sk.noStroke();
+    }
+
+    sk.pop();
+  }
+});
+</script>
+</body>
+</html>
