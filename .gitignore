@@ -1,3 +1,8 @@
 ﻿*
 !index.html
 !.gitignore
+!favicon.ico
+!images/
+!images/favicon-32x32.png
+!images/favicon-48x48.png
+!images/ogp.png
