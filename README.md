@@ -4,7 +4,7 @@ A p5.js animated doughnut character demo with dance and formation controls.
 
 ## Demo
 
-[Open Happy Doughnuts](https://reko-notes.github.io/Happy-Doughnuts/)
+[Happy Doughnuts](https://reko-notes.github.io/Happy-Doughnuts/)
 
 ## Features
 
